@@ -110,7 +110,7 @@ def plan_with_model(body):
         except Exception as e:                       # noqa
             last = str(e)[:300]
             print("PLANNER ERROR:", last, flush=True)
-    raise RuntimeError("planner failed")
+    raise RuntimeError(last or "planner failed")
 
 
 def validate_plan(p, body, idset):
@@ -392,8 +392,8 @@ def create():
     chat0 = time.time_ns()
     try:
         plan = plan_with_model(body)
-    except Exception:
-        return err(502, "planner unavailable")
+    except Exception as e:
+        return err(502, "planner unavailable: " + str(e)[:300])
     chat1 = time.time_ns()
     st = {"runId": body["runId"], "marker": body["publicMarker"], "agentName": body.get("agentName") or "incident-response",
           "model": LLM_MODEL, "status": "waiting",

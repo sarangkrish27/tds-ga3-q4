@@ -29,6 +29,9 @@ body = {
 tp = "00-" + uuid.uuid4().hex + "-" + uuid.uuid4().hex[:16] + "-01"
 r = requests.post(BASE + "/v2/incidents", json=body, headers={"traceparent": tp}, timeout=20)
 print("POST", r.status_code)
+if r.status_code != 200:
+    print("Server said:", r.text)
+    sys.exit(1)
 resp = r.json()
 first_503 = True
 step = 0
