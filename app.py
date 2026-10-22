@@ -393,7 +393,7 @@ def create():
     try:
         plan = plan_with_model(body)
     except Exception as e:
-        return err(502, "planner unavailable: " + str(e)[:300])
+        return err(502, "planner unavailable")
     chat1 = time.time_ns()
     st = {"runId": body["runId"], "marker": body["publicMarker"], "agentName": body.get("agentName") or "incident-response",
           "model": LLM_MODEL, "status": "waiting",
