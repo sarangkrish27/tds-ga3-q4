@@ -103,11 +103,13 @@ def plan_with_model(body):
                       "messages": [{"role": "system", "content": SYSTEM + (f"\nYour previous answer was invalid: {last}" if last else "")},
                                    {"role": "user", "content": user}]},
                 timeout=12)
-            r.raise_for_status()
+            if r.status_code >= 400:
+                raise RuntimeError(f"LLM HTTP {r.status_code}: {r.text[:300]}")
             plan = json.loads(r.json()["choices"][0]["message"]["content"])
             return validate_plan(plan, body, idset)
         except Exception as e:                       # noqa
-            last = str(e)[:200]
+            last = str(e)[:300]
+            print("PLANNER ERROR:", last, flush=True)
     raise RuntimeError("planner failed")
 
 
