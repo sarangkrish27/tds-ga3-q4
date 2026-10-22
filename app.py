@@ -97,11 +97,29 @@ Rules:
 Never invent ids."""
 
 
+def slim_transcript(transcript):
+    """Deterministic preprocessing: drop boilerplate = lines whose text repeats 3+ times once ids/numbers
+    are masked. Falls back to the full transcript if the result looks implausible."""
+    lines = [l for l in transcript.splitlines() if l.strip()]
+
+    def norm(l):
+        t = re.sub(r"^\s*\[[^\]]+\]\s*", "", l)
+        return re.sub(r"[0-9a-fA-F]{6,}|\d+", "#", t).strip().lower()
+
+    counts = {}
+    for l in lines:
+        counts[norm(l)] = counts.get(norm(l), 0) + 1
+    keep = [l for l in lines if counts[norm(l)] < 3]
+    print(f"slim_transcript: {len(lines)} -> {len(keep)} lines", flush=True)
+    return "\n".join(keep) if 2 <= len(keep) <= 60 else transcript
+
+
 def plan_with_model(body):
     inc = body["incident"]
-    idset = set(re.findall(r"^\s*\[([^\]\s]+)\]", inc["transcript"], re.M))
+    idset = set(re.findall(r"^\s*\[([^\]\s]+)\]", inc["transcript"], re.M))   # validate against ALL ids
     pol = {k: v for k, v in body["policy"].items() if k != "doNotExport"}
-    user = json.dumps({"incident": inc, "toolCatalog": body["toolCatalog"], "policy": pol})  # NO 'sensitive'
+    inc_for_model = dict(inc, transcript=slim_transcript(inc["transcript"]))
+    user = json.dumps({"incident": inc_for_model, "toolCatalog": body["toolCatalog"], "policy": pol})  # NO 'sensitive'
     t0 = time.time()
     last = None
     for attempt in range(2):
@@ -371,11 +389,10 @@ def pending_dispatches(st):
 
 def view(st, new=None, approvals=None, full=False):
     terminal = st["status"] != "waiting"
-    out = {"runId": st["runId"], "status": st["status"], "diagnosis": st["diagnosis"]}
-    if terminal or full:
-        out.update({"chosenEffect": st["effect"]["toolName"] if st["effect"]["attempts"] else None,
-                    "suppressed": st["suppressed"], "actionLog": st["actionLog"],
-                    "receiptLog": st["receiptLog"]})
+    out = {"runId": st["runId"], "status": st["status"], "diagnosis": st["diagnosis"],
+           "chosenEffect": st["effect"]["toolName"] if st["effect"]["attempts"] else None,
+           "suppressed": st["suppressed"], "actionLog": st["actionLog"],
+           "receiptLog": st["receiptLog"]}
     if terminal:
         out["dispatches"], out["approvals"] = [], []
         out["otlp"] = build_otlp(st)
